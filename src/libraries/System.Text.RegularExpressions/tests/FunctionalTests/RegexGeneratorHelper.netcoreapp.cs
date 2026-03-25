@@ -159,6 +159,19 @@ namespace System.Text.RegularExpressions.Tests
             }
 #endif
 
+            // Cap the batch size to avoid overwhelming Roslyn with too many patterns in a single compilation,
+            // which can exhaust the ~2 GB address space on x86 checked coreclr builds.
+            const int MaxBatchSize = 200;
+            if (regexes.Length > MaxBatchSize)
+            {
+                var r = new List<Regex>(regexes.Length);
+                for (int i = 0; i < regexes.Length; i += MaxBatchSize)
+                {
+                    r.AddRange(await SourceGenRegexAsync(regexes[i..Math.Min(i + MaxBatchSize, regexes.Length)], cancellationToken).ConfigureAwait(false));
+                }
+                return r.ToArray();
+            }
+
             Debug.Assert(regexes.Length > 0);
 
             var code = new StringBuilder();

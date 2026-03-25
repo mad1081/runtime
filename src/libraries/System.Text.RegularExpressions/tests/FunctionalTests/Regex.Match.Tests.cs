@@ -2725,8 +2725,11 @@ namespace System.Text.RegularExpressions.Tests
 
             // Build a pattern with deeply nested character class subtractions: [a-[a-[a-[...[a]...]]]]
             // This previously caused a StackOverflowException due to unbounded recursion in the parser.
-            // Use a reduced depth for SourceGenerated to avoid overwhelming Roslyn compilation.
-            int depth = engine == RegexEngine.SourceGenerated ? 1_000 : 10_000;
+            // Use a reduced depth for SourceGenerated to avoid overwhelming Roslyn compilation,
+            // and for NonBacktracking to avoid OOM when building the BDD structure on memory-constrained
+            // platforms such as x86 checked coreclr (where the ~2 GB address space can be exhausted by
+            // the O(n²) string allocations in CreateBDDFromSetString for deeply nested subtraction sets).
+            int depth = engine is RegexEngine.SourceGenerated or RegexEngine.NonBacktracking ? 1_000 : 10_000;
             var sb = new System.Text.StringBuilder();
             sb.Append('[');
             for (int i = 0; i < depth; i++)
